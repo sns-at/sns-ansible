@@ -1,0 +1,30 @@
+- name: Bootstrap sns-ansible everywhere
+  hosts: all
+  become: true
+
+  vars:
+    ansible_pubkey_path: "/home/sns-ansible/.ssh/sns-ansible.pub"
+
+  tasks:
+    - name: Ensure sns-ansible user exists
+      ansible.builtin.user:
+        name: sns-ansible
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Allow passwordless sudo for sns-ansible
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/sns-ansible
+        content: |
+          sns-ansible ALL=(ALL) NOPASSWD:ALL
+        owner: root
+        group: root
+        mode: "0440"
+
+    - name: Install control-node public key for sns-ansible
+      ansible.posix.authorized_key:
+        user: sns-ansible
+        key: "{{ lookup('file', ansible_pubkey_path) }}"
+        state: present
+

@@ -1,0 +1,34 @@
+- name: Baseline config (all nodes)
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - git
+          - vim
+          - htop
+          - jq
+          - unzip
+          - tmux
+          - chrony
+        state: present
+
+    - name: Ensure time sync is enabled (chrony)
+      ansible.builtin.service:
+        name: chrony
+        state: started
+        enabled: true
+
+    - name: Ensure sudo is installed
+      ansible.builtin.apt:
+        name: sudo
+        state: present
+
