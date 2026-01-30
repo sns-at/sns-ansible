@@ -48,13 +48,13 @@ This allows Ansible to run unattended and reproducibly.
 
 ## Repository structure
 
-infra-ansible/
-├── inventory/
-│   └── hosts.ini
-├── ansible.cfg
-├── bootstrap.yaml
-├── baseline.yaml
-├── patching.yaml
+infra-ansible/<br>
+├── inventory/<br>
+│   └── hosts.ini<br>
+├── ansible.cfg<br>
+├── bootstrap.yaml<br>
+├── baseline.yaml<br>
+├── patching.yaml<br>
 └── README.md
 
 ---
@@ -68,8 +68,9 @@ One-time bootstrap playbook:
 - configures passwordless sudo
 
 Run once per host:
+````bash
 ansible-playbook -i inventory/hosts.ini bootstrap.yaml
-
+````
 ---
 
 ### baseline.yaml
@@ -79,8 +80,9 @@ Applies common baseline configuration:
 - basic OS hygiene
 
 Run:
+````bash
 ansible-playbook -i inventory/hosts.ini baseline.yaml
-
+````
 ---
 
 ### patching.yaml
@@ -95,21 +97,26 @@ GPU nodes:
 - no automatic reboot
 
 Run examples:
+````bash
 ansible-playbook -i inventory/hosts.ini patching.yaml --limit vm
 ansible-playbook -i inventory/hosts.ini patching.yaml --limit gpu
-
+````
 ---
 
 ## Common commands
 
 Test connectivity:
+````bash
 ansible all -m ping
-
+````
 Limit execution:
+````bash
 ansible-playbook patching.yaml --limit vm
-
+````
 Dry-run (check mode):
+````bash
 ansible-playbook baseline.yaml --check
+````
 
 ---
 
@@ -120,11 +127,12 @@ ansible-playbook baseline.yaml --check
 - No personal access tokens (PATs)
 
 Typical workflow:
+````bash
 git status
 git add .
 git commit -m "Describe change"
 git push
-
+````
 ---
 
 ## Notes & future work
