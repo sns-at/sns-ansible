@@ -46,3 +46,16 @@
         password_lock: true
       loop: "{{ managed_users }}"
 
+    - name: Ensure shared write group exists (GitHub)
+      ansible.builtin.group:
+        name: "{{ github_write_group }}"
+        state: present
+
+    - name: Ensure shared directory exists (root-owned, group-writable)
+      ansible.builtin.file:
+        path: "{{ shared_github_dir }}"
+        state: directory
+        owner: root
+        group: "{{ github_write_group }}"
+        mode: "{{ shared_github_dir_mode }}"
+        recurse: false

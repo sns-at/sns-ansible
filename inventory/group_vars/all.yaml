@@ -1,16 +1,20 @@
 managed_users:
   - name: admin_heichinger
-    groups: ["sudo"]
+    groups: ["sudo", "github-user"]
     pubkey_file: "files/ssh_keys/admin_heichinger.pub"
 
   - name: admin_waldbauer
-    groups: ["sudo"]
+    groups: ["sudo", "github-user"]
     pubkey_file: "files/ssh_keys/admin_waldbauer.pub"
 
   - name: admin_fiegl
-    groups: ["sudo"]
+    groups: ["sudo", "github-user"]
     pubkey_file: "files/ssh_keys/admin_fiegl.pub"
 
   - name: admin_tayeh
-    groups: ["sudo"]
+    groups: ["sudo", "github-user"]
     pubkey_file: "files/ssh_keys/admin_tayeh.pub"
+
+github_write_group: "github-user"
+shared_github_dir: "/usr/local/bin/container"
+shared_github_dir_mode: "2775"   # 2=setgid, 775 => group write
