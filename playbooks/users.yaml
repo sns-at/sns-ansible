@@ -1,0 +1,39 @@
+- name: Manage local users + SSH keys
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Ensure users exist
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        shell: /bin/bash
+        create_home: true
+        groups: "{{ item.groups | default([]) }}"
+        append: true
+        state: present
+      loop: "{{ managed_users }}"
+
+    - name: Ensure .ssh dir exists
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}/.ssh"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "0700"
+      loop: "{{ managed_users }}"
+
+    - name: Install authorized_keys
+      ansible.posix.authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ lookup('file', item.pubkey_file) }}"
+        state: present
+      loop: "{{ managed_users }}"
+
+    # OPTIONAL: disable password for these users (forces key-based login)
+    - name: Lock password (optional)
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        password_lock: true
+      loop: "{{ managed_users }}"
+      when: password_lock_local_users | default(false)
+

@@ -1,0 +1,21 @@
+- name: SSH hardening (key-based)
+  hosts: all
+  become: true
+  tasks:
+    - name: Disable SSH password auth
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+
+    - name: Disable challenge-response auth
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^KbdInteractiveAuthentication'
+        line: 'KbdInteractiveAuthentication no'
+
+    - name: Restart ssh
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
