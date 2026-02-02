@@ -38,11 +38,29 @@ This allows different behavior (e.g. patching & reboots) per group.
 ## Authentication & access model
 
 - All automation runs as the **`sns-ansible`** user
-- SSH is **key-based only**
-- `sns-ansible` has **passwordless sudo** on managed hosts
-- SSH host keys are auto-accepted for new hosts (`accept-new`)
+- SSH access is **key-based**
+- Managed local users are centrally defined and enforced via Ansible
+- Selected users are placed into shared Unix groups to grant access to common directories
+- Directory ownership and permissions are enforced to prevent configuration drift
 
 This allows Ansible to run unattended and reproducibly.
+
+---
+
+## User and group management
+
+Local users are centrally managed via Ansible:
+
+- users are created if missing
+- SSH public keys are installed from the repository
+- passwords may be disabled to enforce key-based access
+- users are added to predefined Unix groups
+- shared directories are checked for:
+  - existence
+  - correct group ownership
+  - correct permissions
+
+This ensures consistent access control across all managed hosts.
 
 ---
 
@@ -69,9 +87,8 @@ One-time bootstrap playbook:
 
 Run once per host:
 ````bash
-ansible-playbook -i inventory/hosts.ini bootstrap.yaml
+ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yaml
 ````
----
 
 ### baseline.yaml
 Applies common baseline configuration:
@@ -81,9 +98,8 @@ Applies common baseline configuration:
 
 Run:
 ````bash
-ansible-playbook -i inventory/hosts.ini baseline.yaml
+ansible-playbook -i inventory/hosts.ini playbooks/baseline.yaml
 ````
----
 
 ### patching.yaml
 Applies OS updates with group-specific behavior.
@@ -98,9 +114,24 @@ GPU nodes:
 
 Run examples:
 ````bash
-ansible-playbook -i inventory/hosts.ini patching.yaml --limit vm
-ansible-playbook -i inventory/hosts.ini patching.yaml --limit gpu
+ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml --limit vm
+ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml --limit gpu
 ````
+
+### users.yaml
+Manages local user access:
+
+- user creation and group membership
+- SSH authorized keys
+- optional password disabling
+- shared group creation
+- shared directory ownership and permission enforcement
+
+Run examples:
+````bash
+ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml --limit vm
+````
+
 ---
 
 ## Common commands
@@ -111,11 +142,11 @@ ansible all -m ping
 ````
 Limit execution:
 ````bash
-ansible-playbook patching.yaml --limit vm
+ansible-playbook playbooks/patching.yaml --limit vm
 ````
 Dry-run (check mode):
 ````bash
-ansible-playbook baseline.yaml --check
+ansible-playbook playbooks/baseline.yaml --check
 ````
 
 ---
