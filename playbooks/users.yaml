@@ -13,6 +13,16 @@
         state: present
       loop: "{{ managed_users }}"
 
+    - name: Allow passwordless sudo for managed users
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ item.name }}"
+        content: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+      loop: "{{ managed_users }}"
+      when: "'sudo' in (item.groups | default([]))"
+
     - name: Ensure .ssh dir exists
       ansible.builtin.file:
         path: "/home/{{ item.name }}/.ssh"
@@ -25,7 +35,7 @@
     - name: Install authorized_keys
       ansible.posix.authorized_key:
         user: "{{ item.name }}"
-        key: "{{ lookup('file', item.pubkey_file) }}"
+        key: "{{ lookup('file', playbook_dir ~ '/../' ~ item.pubkey_file) }}"
         state: present
       loop: "{{ managed_users }}"
 
@@ -35,5 +45,4 @@
         name: "{{ item.name }}"
         password_lock: true
       loop: "{{ managed_users }}"
-      when: password_lock_local_users | default(false)
 
