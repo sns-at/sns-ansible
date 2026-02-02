@@ -3,6 +3,11 @@
   become: true
 
   tasks:
+    - name: Ensure shared write group exists (GitHub)
+      ansible.builtin.group:
+        name: "{{ github_write_group }}"
+        state: present
+
     - name: Ensure users exist
       ansible.builtin.user:
         name: "{{ item.name }}"
@@ -45,11 +50,6 @@
         name: "{{ item.name }}"
         password_lock: true
       loop: "{{ managed_users }}"
-
-    - name: Ensure shared write group exists (GitHub)
-      ansible.builtin.group:
-        name: "{{ github_write_group }}"
-        state: present
 
     - name: Ensure shared directory exists (root-owned, group-writable)
       ansible.builtin.file:
