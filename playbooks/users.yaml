@@ -59,3 +59,18 @@
         group: "{{ github_write_group }}"
         mode: "{{ shared_github_dir_mode }}"
         recurse: false
+
+    - name: Ensure ACL package installed
+      ansible.builtin.apt:
+        name: acl
+        state: present
+        update_cache: true
+
+    - name: Default ACL so new files/dirs are group-writable
+      ansible.posix.acl:
+        path: "{{ shared_github_dir }}"
+        entity: "{{ github_write_group }}"
+        etype: group
+        permissions: rwx
+        default: true
+        state: present
