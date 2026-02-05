@@ -151,6 +151,39 @@ ansible-playbook playbooks/baseline.yaml --check
 
 ---
 
+## Add Linux-Machine to Ansible-Inventory
+Example: snsgb11
+### Edit inventory
+- Add/assign new host to according group in [hosts.ini](inventory/hosts.ini) 
+  ````bash
+  [gpu]
+  sbsgb10 ansible_host=...
+  snsgb11 ansible_host=<NEW_IP_OR_DNS>
+  ````
+
+### Bootstrap
+````bash
+cd /home/sns-ansible/infra-ansible
+
+ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yaml \
+  --limit snsgb11 \
+  -e ansible_user=snsadmin \
+  --ask-pass --ask-become-pass
+````
+
+### Apply initial playbooks
+````bash
+# optional connection test:
+ansible -i inventory/hosts.ini snsgb11 -m ping
+
+ansible-playbook -i inventory/hosts.ini playbooks/users.yaml --limit snsgb11
+ansible-playbook -i inventory/hosts.ini playbooks/baseline.yaml --limit snsgb11
+# optional:
+ansible-playbook -i inventory/hosts.ini playbooks/ssh-hardening.yaml --limit snsgb11
+````
+
+---
+
 ## Git usage
 
 - Repository is hosted in the SNS GitHub organization
