@@ -66,14 +66,28 @@ This ensures consistent access control across all managed hosts.
 
 ## Repository structure
 
-infra-ansible/<br>
-├── inventory/<br>
-│   └── hosts.ini<br>
-├── ansible.cfg<br>
-├── bootstrap.yaml<br>
-├── baseline.yaml<br>
-├── patching.yaml<br>
-└── README.md
+````bash
+.
+├── README.md
+├── ansible.cfg
+├── files
+│   └── ssh_keys
+│       ├── admin_fiegl.pub
+│       ├── admin_heichinger.pub
+│       ├── admin_tayeh.pub
+│       └── admin_waldbauer.pub
+├── inventory
+│   ├── group_vars
+│   │   └── all.yaml
+│   └── hosts.ini
+├── playbooks
+│   ├── baseline.yaml
+│   ├── bootstrap.yaml
+│   ├── patching.yaml
+│   ├── ssh-hardening.yaml
+│   └── users.yaml
+└── run-patching.sh
+````
 
 ---
 
@@ -129,7 +143,7 @@ Manages local user access:
 
 Run examples:
 ````bash
-ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml --limit vm
+ansible-playbook -i inventory/hosts.ini playbooks/users.yaml --limit vm
 ````
 
 ---
@@ -181,6 +195,20 @@ ansible-playbook -i inventory/hosts.ini playbooks/baseline.yaml --limit snsgb11
 # optional:
 ansible-playbook -i inventory/hosts.ini playbooks/ssh-hardening.yaml --limit snsgb11
 ````
+
+---
+
+## Schedules
+
+- **Monthly OS patching**
+  - cron schedule: `0 3 3 * *`
+  - wrapper script: `/home/sns-ansible/infra-ansible/run-patching.sh`
+  - log path: `/home/sns-ansible/ansible-patching.log`
+  - mail recipients:
+    - cloud.status@sns.at
+    - rubina.waldbauer@sns.at
+    - patrick.heichinger@sns.at
+  - sender address: `ansible@sns.at`
 
 ---
 
