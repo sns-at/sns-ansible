@@ -154,12 +154,12 @@ ansible-playbook playbooks/baseline.yaml --check
 ## Add Linux-Machine to Ansible-Inventory
 Example: snsgb11
 ### Edit inventory
-- Add/assign new host to according group in [hosts.ini](inventory/hosts.ini) 
-  ````bash
-  [gpu]
-  sbsgb10 ansible_host=...
-  snsgb11 ansible_host=<NEW_IP_OR_DNS>
-  ````
+Add/assign new host to according group in [hosts.ini](inventory/hosts.ini) 
+````bash
+[gpu]
+sbsgb10 ansible_host=...
+snsgb11 ansible_host=<NEW_IP_OR_DNS>
+````
 
 ### Bootstrap
 ````bash
