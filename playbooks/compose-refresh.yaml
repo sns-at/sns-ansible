@@ -1,0 +1,33 @@
+- name: Refresh docker-compose stacks (pull latest + recreate)
+  hosts: docker
+  become: true
+  vars:
+    compose_cmd: "docker compose"
+
+  tasks:
+    - name: Fail if compose_base_dir is missing
+      ansible.builtin.fail:
+        msg: "compose_base_dir is not defined for {{ inventory_hostname }} (set it in inventory/host_vars/{{ inventory_hostname }}.yaml)"
+      when: compose_base_dir is not defined
+
+    - name: Find docker-compose.yaml files below compose_base_dir
+      ansible.builtin.find:
+        paths: "{{ compose_base_dir }}"
+        patterns: "docker-compose.yaml"
+        file_type: file
+        recurse: true
+      register: compose_files
+
+    - name: Pull latest images
+      ansible.builtin.command:
+        cmd: "{{ compose_cmd }} -f {{ item.path }} pull"
+      loop: "{{ compose_files.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Recreate services with pulled images
+      ansible.builtin.command:
+        cmd: "{{ compose_cmd }} -f {{ item.path }} up -d --remove-orphans"
+      loop: "{{ compose_files.files }}"
+      loop_control:
+        label: "{{ item.path }}"
