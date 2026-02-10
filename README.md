@@ -5,9 +5,11 @@ This repository contains the Ansible control configuration for SNS AI compute in
 It is used to:
 - centrally manage baseline configuration on Linux machines
 - apply OS patching in a controlled way
-- bootstrap and operate via a dedicated Ansible service user (`sns-ansible`)
+- manage local users and access
+- refresh Docker Compose–based workloads in a controlled, reproducible way
+- bootstrap and operate via a dedicated Ansible service user (sns-ansible)
 
-The Ansible control node currently runs on the **n8n VM**, and the repository is located at:
+The Ansible control node currently runs on the n8n VM, and the repository is located at:
 
 /home/sns-ansible/infra-ansible
 
@@ -17,30 +19,31 @@ The Ansible control node currently runs on the **n8n VM**, and the repository is
 
 The inventory currently contains:
 
-- **Control node**
+- Control node
   - n8n VM (runs Ansible itself)
 
-- **VMs**
-  - application / service VMs (e.g. qdrant, postgres, etc.)
+- VMs
+  - application / service VMs (e.g. n8n, qdrant, postgres, etc.)
 
-- **GPU nodes**
+- GPU nodes
   - DGX systems used for AI workloads
 
 Nodes are grouped in the inventory as:
-- `control`
-- `vm`
-- `gpu`
+- control
+- vm
+- gpu
+- docker
 
-This allows different behavior (e.g. patching & reboots) per group.
+Groups allow different behavior (e.g. patching, reboots, container refresh).
 
 ---
 
 ## Authentication & access model
 
-- All automation runs as the **`sns-ansible`** user
-- SSH access is **key-based**
+- All automation runs as the sns-ansible user
+- SSH access is key-based
 - Managed local users are centrally defined and enforced via Ansible
-- Selected users are placed into shared Unix groups to grant access to common directories
+- Selected users are placed into shared Unix groups
 - Directory ownership and permissions are enforced to prevent configuration drift
 
 This allows Ansible to run unattended and reproducibly.
@@ -60,91 +63,52 @@ Local users are centrally managed via Ansible:
   - correct group ownership
   - correct permissions
 
-This ensures consistent access control across all managed hosts.
-
 ---
 
 ## Repository structure
-
 ````bash
 .
 ├── README.md
 ├── ansible.cfg
-├── files
-│   └── ssh_keys
-│       ├── admin_fiegl.pub
-│       ├── admin_heichinger.pub
-│       ├── admin_tayeh.pub
-│       └── admin_waldbauer.pub
-├── inventory
-│   ├── group_vars
-│   │   └── all.yaml
-│   └── hosts.ini
-├── playbooks
-│   ├── baseline.yaml
-│   ├── bootstrap.yaml
-│   ├── patching.yaml
-│   ├── ssh-hardening.yaml
-│   └── users.yaml
-└── run-patching.sh
+├── files/ssh_keys/
+├── inventory/
+│   ├── hosts.ini
+│   ├── group_vars/all.yaml
+│   └── host_vars/
+├── playbooks/
+│   ├── bootstrap.yaml
+│   ├── baseline.yaml
+│   ├── patching.yaml
+│   ├── compose-refresh.yaml
+│   ├── ssh-hardening.yaml
+│   └── users.yaml
+├── run-patching.sh
+└── run-compose-refresh.sh
 ````
-
 ---
 
 ## Key playbooks
 
-### bootstrap.yaml
-One-time bootstrap playbook:
-- creates the `sns-ansible` user on all hosts
-- installs SSH keys
-- configures passwordless sudo
+bootstrap.yaml  
+Creates the sns-ansible user, installs SSH keys, configures passwordless sudo.
 
-Run once per host:
-````bash
-ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yaml
-````
+baseline.yaml  
+Applies common OS baseline configuration.
 
-### baseline.yaml
-Applies common baseline configuration:
-- essential packages
-- time synchronization
-- basic OS hygiene
-
-Run:
-````bash
-ansible-playbook -i inventory/hosts.ini playbooks/baseline.yaml
-````
-
-### patching.yaml
+patching.yaml  
 Applies OS updates with group-specific behavior.
 
-VMs:
-- dist-upgrade
-- automatic reboot if required
+users.yaml  
+Manages local users, SSH keys, groups, and directory permissions.
 
-GPU nodes:
-- conservative upgrade
-- no automatic reboot
+compose-refresh.yaml  
+Refreshes Docker Compose workloads:
+- pulls latest images
+- recreates containers only if the image digest changed
 
-Run examples:
-````bash
-ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml --limit vm
-ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml --limit gpu
-````
+Each host defines its own container scope via inventory/host_vars/<host>.yaml:
 
-### users.yaml
-Manages local user access:
-
-- user creation and group membership
-- SSH authorized keys
-- optional password disabling
-- shared group creation
-- shared directory ownership and permission enforcement
-
-Run examples:
-````bash
-ansible-playbook -i inventory/hosts.ini playbooks/users.yaml --limit vm
-````
+compose_base_dir: /usr/local/bin/container/04_DGX-99
 
 ---
 
@@ -154,87 +118,59 @@ Test connectivity:
 ````bash
 ansible all -m ping
 ````
-Limit execution:
+Run patching:
 ````bash
-ansible-playbook playbooks/patching.yaml --limit vm
+ansible-playbook -i inventory/hosts.ini playbooks/patching.yaml
 ````
-Dry-run (check mode):
+
+Dry run:
 ````bash
 ansible-playbook playbooks/baseline.yaml --check
 ````
-
 ---
 
-## Add Linux-Machine to Ansible-Inventory
-Example: snsgb11
-### Edit inventory
-Add/assign new host to according group in [hosts.ini](inventory/hosts.ini) 
-````bash
-[gpu]
-sbsgb10 ansible_host=...
-snsgb11 ansible_host=<NEW_IP_OR_DNS>
-````
+## Add Linux machine to inventory
 
-### Bootstrap
+Add host to inventory/hosts.ini, then bootstrap:
 ````bash
-cd /home/sns-ansible/infra-ansible
-
 ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yaml \
-  --limit snsgb11 \
+  --limit <host> \
   -e ansible_user=snsadmin \
   --ask-pass --ask-become-pass
 ````
-
-### Apply initial playbooks
-````bash
-# optional connection test:
-ansible -i inventory/hosts.ini snsgb11 -m ping
-
-ansible-playbook -i inventory/hosts.ini playbooks/users.yaml --limit snsgb11
-ansible-playbook -i inventory/hosts.ini playbooks/baseline.yaml --limit snsgb11
-# optional:
-ansible-playbook -i inventory/hosts.ini playbooks/ssh-hardening.yaml --limit snsgb11
-````
-
 ---
 
 ## Schedules
 
-- **Monthly OS patching**
-  - cron schedule: `0 3 3 * *`
-  - wrapper script: `/home/sns-ansible/infra-ansible/run-patching.sh`
-  - log path: `/home/sns-ansible/ansible-patching.log`
-  - mail recipients:
-    - cloud.status@sns.at
-    - rubina.waldbauer@sns.at
-    - patrick.heichinger@sns.at
-  - sender address: `ansible@sns.at`
+Monthly OS patching
+- cron: 0 3 3 * *
+- script: run-patching.sh
+- log: /home/sns-ansible/ansible-patching.log
+- mail: cloud.status@sns.at
+
+Monthly Docker Compose refresh
+- cron: 15 3 3 * *
+- script: run-compose-refresh.sh
+- log: /home/sns-ansible/ansible-compose-refresh.log
+- mail: cloud.status@sns.at
+- behavior:
+  - pulls latest images
+  - containers are recreated only when image digests change
 
 ---
 
 ## Git usage
 
-- Repository is hosted in the SNS GitHub organization
-- Authentication uses **SSH over port 443**
-- No personal access tokens (PATs)
+- Repository hosted in SNS GitHub org
+- SSH over port 443
+- No personal access tokens
+- Operational Git access on hosts is handled by the sns-ansible service user
 
-Typical workflow:
-````bash
-git status
-git add .
-git commit -m "Describe change"
-git push
-````
 ---
 
 ## Notes & future work
 
-Planned or possible next steps:
 - move Ansible to a dedicated control VM
 - refactor playbooks into roles
-- integrate centralized identity (e.g. Entra ID / AD via SSSD)
-- add security hardening baselines
-- introduce Ansible Vault for secrets if needed
-
-This repository intentionally favors clarity and simplicity while the setup evolves.
-
+- integrate centralized identity (AD / Entra ID)
+- introduce Ansible Vault for secrets
