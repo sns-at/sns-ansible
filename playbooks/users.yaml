@@ -1,6 +1,16 @@
 - name: Manage local users + SSH keys
   hosts: all
   become: true
+  vars:
+    effective_managed_users: >-
+      {{
+        managed_users +
+        (
+          (managed_users_snsgb11 | default([]))
+          if inventory_hostname == 'snsgb11'
+          else []
+        )
+      }}
 
   tasks:
     - name: Ensure shared write group exists (GitHub)
@@ -16,7 +26,7 @@
         groups: "{{ item.groups | default([]) }}"
         append: true
         state: present
-      loop: "{{ managed_users }}"
+      loop: "{{ effective_managed_users }}"
 
     - name: Allow passwordless sudo for managed users
       ansible.builtin.copy:
@@ -25,7 +35,7 @@
         owner: root
         group: root
         mode: "0440"
-      loop: "{{ managed_users }}"
+      loop: "{{ effective_managed_users }}"
       when: "'sudo' in (item.groups | default([]))"
 
     - name: Ensure .ssh dir exists
@@ -35,21 +45,21 @@
         owner: "{{ item.name }}"
         group: "{{ item.name }}"
         mode: "0700"
-      loop: "{{ managed_users }}"
+      loop: "{{ effective_managed_users }}"
 
     - name: Install authorized_keys
       ansible.posix.authorized_key:
         user: "{{ item.name }}"
         key: "{{ lookup('file', playbook_dir ~ '/../' ~ item.pubkey_file) }}"
         state: present
-      loop: "{{ managed_users }}"
+      loop: "{{ effective_managed_users }}"
 
     # OPTIONAL: disable password for these users (forces key-based login)
     - name: Lock password (optional)
       ansible.builtin.user:
         name: "{{ item.name }}"
         password_lock: true
-      loop: "{{ managed_users }}"
+      loop: "{{ effective_managed_users }}"
 
     - name: Ensure shared directory exists (root-owned, group-writable)
       ansible.builtin.file:
