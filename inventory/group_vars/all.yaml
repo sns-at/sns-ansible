@@ -1,19 +1,24 @@
 managed_users:
   - name: admin_heichinger
-    groups: ["sudo", "github-user"]
+    groups: [ "sudo", "github-user" ]
     pubkey_file: "files/ssh_keys/admin_heichinger.pub"
 
   - name: admin_waldbauer
-    groups: ["sudo", "github-user"]
+    groups: [ "sudo", "github-user" ]
     pubkey_file: "files/ssh_keys/admin_waldbauer.pub"
 
   - name: admin_fiegl
-    groups: ["sudo", "github-user"]
+    groups: [ "sudo", "github-user" ]
     pubkey_file: "files/ssh_keys/admin_fiegl.pub"
 
   - name: admin_tayeh
-    groups: ["sudo", "github-user"]
+    groups: [ "sudo", "github-user" ]
     pubkey_file: "files/ssh_keys/admin_tayeh.pub"
+
+  - name: mimirio
+    groups: [ "docker" ]
+    pubkey_file: "files/ssh_keys/mimirio.pub"
+
 
 github_write_group: "github-user"
 shared_github_dir: "/usr/local/bin/container"

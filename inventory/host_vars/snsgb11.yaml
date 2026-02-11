@@ -1,5 +1,0 @@
-managed_users:
-  - name: mimirio
-    groups:
-      - docker
-    pubkey_file: files/ssh/mimirio.pub
