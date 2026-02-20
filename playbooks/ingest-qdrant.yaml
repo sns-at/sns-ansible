@@ -39,4 +39,4 @@
         minute: "0"
         hour: "0"
         weekday: "1-5"
-        job: "/usr/local/bin/qdrant_ingestion_run.sh"
+        job: "/usr/local/bin/container/01_Orchestrator-11/qdrant_ingestion_run.sh"
