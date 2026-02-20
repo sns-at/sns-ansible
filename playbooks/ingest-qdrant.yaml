@@ -1,0 +1,42 @@
+- name: Schedule Qdrant ingestion jobs
+  hosts: snsaiorc01
+  become: true
+
+  tasks:
+    - name: Install ingestion runner script
+      ansible.builtin.copy:
+        dest: /usr/local/bin/qdrant_ingestion_run.sh
+        mode: "0755"
+        owner: root
+        group: root
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          BASE="/usr/local/bin/container/01_Orchestrator-11/qdrant_ingestion"
+          PY="${BASE}/.venv/bin/python"
+          LOGDIR="/var/log/qdrant-ingestion"
+          TS="$(date -Is)"
+          HOST="$(hostname -f 2>/dev/null || hostname)"
+          mkdir -p "$LOGDIR"
+          LOG="${LOGDIR}/ingest-${TS}.log"
+          {
+            echo "===== ${TS} START qdrant ingestion on ${HOST} ====="
+            cd "$BASE"
+            echo "--- run_ingest_customers.py ---"
+            "$PY" run_ingest_customers.py
+            echo "--- run_ingest_all.py ---"
+            "$PY" run_ingest_all.py
+            echo "===== $(date -Is) END qdrant ingestion ====="
+          } 2>&1 | tee -a "$LOG"
+          REPORT="$(egrep -h '\[Ingest\]|\[Qdrant\]' "$LOG" | tail -n 200)"
+          TO="cloud.status@sns.at"
+          SUBJECT="[ansible] qdrant ingestion OK (${HOST})"
+          printf "%s\n\nFull log: %s\n" "$REPORT" "$LOG" | mail -s "$SUBJECT" "$TO"
+
+    - name: Ensure cron job exists (Mon-Fri 00:00)
+      ansible.builtin.cron:
+        name: "Qdrant ingestion (customers + all) weekday midnight"
+        minute: "0"
+        hour: "0"
+        weekday: "1-5"
+        job: "/usr/local/bin/qdrant_ingestion_run.sh"
